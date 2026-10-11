@@ -1,122 +1,75 @@
-import { useState } from 'react'
-import heroImg from './assets/hero.png'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import './App.css'
+import { useCallback, useEffect, useState } from 'react';
+import Backdrop from './components/Backdrop.jsx';
+import Navbar from './components/Navbar.jsx';
+import Cursor from './components/Cursor.jsx';
+import Landing from './components/Landing.jsx';
+import Hook from './components/Hook.jsx';
+import About from './components/About.jsx';
+import Skills from './components/Skills.jsx';
+import Experience from './components/Experience.jsx';
+import Work from './components/Work.jsx';
+import ProjectDetail from './components/ProjectDetail.jsx';
+import AllProjects from './components/AllProjects.jsx';
+import ContactPage from './components/ContactPage.jsx';
+import Footer from './components/Footer.jsx';
+import { useTheme, useRevealAll, useActiveSection, useSceneSnap } from './hooks/hooks.js';
 
-function App() {
-  const [count, setCount] = useState(0)
+const SECTION_IDS = ['about', 'skills', 'experience', 'work', 'contact'];
+
+// pages that open over the site; they also get a URL hash so the Back button closes them
+const pageFromHash = () => {
+  const h = window.location.hash;
+  if (h === '#projects') return { page: 'projects', detail: null };
+  if (h === '#contact-me') return { page: 'contact', detail: null };
+  const m = h.match(/^#project-(\d+)$/);
+  if (m) return { page: null, detail: Number(m[1]) };
+  return { page: null, detail: null };
+};
+
+export default function App() {
+  const { theme, setTheme, themes } = useTheme();
+  const active = useActiveSection(SECTION_IDS);
+  const [route, setRoute] = useState(pageFromHash);
+  useRevealAll();
+  useSceneSnap();
+
+  useEffect(() => {
+    const onPop = () => setRoute(pageFromHash());
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, []);
+
+  const open = useCallback((hash) => {
+    if (window.location.hash !== hash) window.history.pushState({ overlay: true }, '', hash);
+    setRoute(pageFromHash());
+  }, []);
+  const close = useCallback(() => {
+    if (window.history.state && window.history.state.overlay) window.history.back();
+    else { window.history.replaceState(null, '', window.location.pathname); setRoute({ page: null, detail: null }); }
+  }, []);
+
+  const openDetail = useCallback((i) => open(`#project-${i}`), [open]);
+  const openAll = useCallback(() => open('#projects'), [open]);
+  const openContact = useCallback(() => open('#contact-me'), [open]);
 
   return (
     <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.jsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
-
-      <div className="ticks"></div>
-
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
-
-      <div className="ticks"></div>
-      <section id="spacer"></section>
+      <Backdrop />
+      <Cursor />
+      <Navbar active={active} theme={theme} themes={themes} setTheme={setTheme} />
+      <main className="content">
+        <Landing theme={theme} themes={themes} setTheme={setTheme} />
+        <Hook onContact={openContact} />
+        <About />
+        <Skills />
+        <Experience />
+        <Work onOpen={openDetail} onAll={openAll} />
+        <Footer onContact={openContact} />
+      </main>
+      {route.page === 'projects' && <AllProjects onClose={close} onOpen={openDetail} />}
+      {route.page === 'contact' && <ContactPage onClose={close} />}
+      {route.detail !== null && <ProjectDetail index={route.detail} onClose={close} onGo={openDetail} />}
+      <div className="grain" aria-hidden="true" />
     </>
-  )
+  );
 }
-
-export default App
